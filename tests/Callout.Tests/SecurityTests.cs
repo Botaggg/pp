@@ -296,20 +296,6 @@ public class SecurityTests(PostgresDatabase database) : IClassFixture<PostgresDa
         finally { foreach (var b in browsers) b.Dispose(); }
     }
 
-    [Fact]
-    public async Task AvailabilitySearchRejectsExcessiveWork()
-    {
-        var date = new DateOnly(2026, 9, 20);
-        var generator = new Callout.Core.SlotGenerator(new Callout.Infrastructure.Calendars.FakeBusyCalendar());
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => generator.GenerateAsync([], date, date.AddDays(366)));
-        await Assert.ThrowsAsync<ArgumentException>(() => generator.GenerateAsync(
-            Enumerable.Repeat(new Callout.Core.AvailabilityWindow(date, date), 367), date, date));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new Callout.Core.SlotGenerator(
-            new Callout.Infrastructure.Calendars.FakeBusyCalendar(), new() { SlotStep = TimeSpan.FromTicks(1) }));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new Callout.Core.SlotGenerator(
-            new Callout.Infrastructure.Calendars.FakeBusyCalendar(), new() { TravelBuffer = TimeSpan.MaxValue }));
-    }
-
     [PostgresFact]
     public async Task AdminQueuePaginatesWithoutDroppingOrRepeatingRequests()
     {

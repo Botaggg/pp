@@ -1,10 +1,10 @@
 # Callout
 
-![CI](https://github.com/Botaggg/pp/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Botaggg/Database-callout/actions/workflows/ci.yml/badge.svg)
 
 [Live request form](https://callout-marin-cfe8guhza9cnfsf0.northcentralus-01.azurewebsites.net/RequestForm)
 
-Phase 0/1 verification and remaining release steps: [audit](docs/phase-0-1-audit.md).
+Phase 0/1 technical verification and remaining customer-rollout step: [audit](docs/phase-0-1-audit.md).
 
 Phase 2 is implemented: [offline availability engine and scheduling rules](docs/phase-2.md).
 
@@ -90,7 +90,7 @@ Run only the Phase 2 availability tests, without a database or network dependenc
 dotnet test --no-build --no-restore --configuration Release --filter 'Phase=2'
 ```
 
-Build once before using `--no-build`. The 38 availability tests use an in-memory
+Build once before using `--no-build`. The 46 availability tests use an in-memory
 calendar and fixed clock. The live request form remains the Phase 1 flow until
 Phase 3 adds the admin slot picker.
 

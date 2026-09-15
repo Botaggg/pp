@@ -1,127 +1,108 @@
-# Phase 0 and Phase 1 audit
+# Phase 0 and Phase 1 verification
 
-Verified September 15, 2026 against source, GitHub Actions, Azure App Service,
-and the connected Neon production database.
+Rechecked September 15, 2026 against `main` at `29edade`, the current source,
+a fresh PostgreSQL 18 test database and GitHub Actions. This recheck adds tests
+and documentation only; production application behavior is unchanged.
 
 ## Verdict
 
-**Phase 0 and the Phase 1 technical requirements are complete and verified in
-production.** Commit `e4020a8` fixes the request flow, home route, rate limiting,
-and blank-login handling. Both GitHub workflows passed and Azure deployed the
-fixes. A labelled test request passed through the live public form, Neon, and
-the authenticated admin queue. Admin login and logout were verified live.
+Phase 0 and the Phase 1 technical implementation are complete. The original
+Phase 1 acceptance criterion also requires a real customer submission. The
+verified production request is labelled as test data, so customer rollout must
+remain open. No customer was contacted during this verification.
 
-The original plan also calls for a real client to use the form. That customer
-rollout milestone remains separate: the verification record is explicitly test
-data, and no client was contacted as part of this work.
+Phase 2 is already implemented. Its independent offline suite passes, and the
+full HTTP/database suite shows no regression in the request flow.
 
 ## Phase 0
 
-| Requirement | Evidence | Status |
+| Requirement | Evidence | Result |
 | --- | --- | --- |
-| .NET 10 and layered solution | SDK 10.0.401; Core, Infrastructure, Web, Tests build successfully | Pass |
-| Domain has no external dependencies | Core project has no package or project references | Pass |
-| GitHub repository and CI badge | `Botaggg/pp`; README badge and CI workflow present | Pass |
-| Green CI after a push | [CI run for e4020a8](https://github.com/Botaggg/pp/actions/runs/35009071105) | Pass for deployed revision |
-| Azure deployment | [Deployment run for e4020a8](https://github.com/Botaggg/pp/actions/runs/35009071055); App Service running on .NET 10 with HTTPS required | Pass for deployed revision |
-| Public URL | `/` and `/RequestForm` both return 200 with the corrected form | Pass |
+| .NET 10 layered solution | SDK 10.0.401; Core, Infrastructure, Web and Tests build | Pass |
+| Core has no external dependencies | Core project has no package or project references | Pass |
+| Repository and CI badge | Botaggg/Database-callout; README badge uses current repository name | Pass |
+| CI on main | [CI run for 29edade](https://github.com/Botaggg/Database-callout/actions/runs/35016068359) | Pass |
+| Test-gated Azure deployment | [Deployment for 29edade](https://github.com/Botaggg/Database-callout/actions/runs/35016068335) | Pass |
+| Security analysis | [Security run for 29edade](https://github.com/Botaggg/Database-callout/actions/runs/35016068388) | Pass |
 
-The Azure subscription is an enabled Azure for Students subscription. App Service
-plan `ASP-calloutrg-9ba5` uses the Free/F1 tier.
+These workflow results apply to the deployed baseline. Results for subsequent
+commits must be checked separately.
 
 ## Phase 1
 
-| Requirement | Evidence | Status |
+| Requirement | Verification | Result |
 | --- | --- | --- |
-| Client and Booking models | Domain classes, relationship, field limits, requested status | Pass |
-| Real PostgreSQL database | Neon project `callout`, production branch, database `neondb` | Pass |
-| Initial migration applied | `20260915011613_InitialCreate`, EF 10.0.12, in production migration history | Pass |
-| Correct schema | `Clients`, `Bookings`, foreign key, unique email index, booking date index | Pass |
-| UTC timestamp storage | All stored timestamps use PostgreSQL `timestamp with time zone` | Pass |
-| Public request fields | Name, phone, email, address, needs, availability | Present |
-| Form accepts valid submissions | Empty honeypot and availability no longer get implicit required validation | Pass, live and local |
-| Spam rejection | Filled honeypot redirects to confirmation without inserting data | Pass, live and local |
-| Fixed-window POST limits | 10 request POSTs per 10 minutes, 10 login POSTs per 15 minutes | Pass locally; page views also verified live |
-| Confirmation | Valid form writes client and booking, then redirects to confirmation | Pass, live and local PostgreSQL |
-| Single-admin cookie authentication | Framework PasswordHasher, configured credentials, secure HTTP-only production cookie | Pass, live and local |
-| Protected admin queue | Anonymous access redirects to login; authenticated access shows the persisted request; logout revokes access | Pass, live and local |
-| Production persistence | Labelled verification client 1 and booking 1 saved through the live form | Pass |
-| Real client usage | No actual customer submission was performed or claimed | Customer rollout step |
+| Client and Booking models | Required fields, relationship, unique email and booking-date indexes | Pass |
+| PostgreSQL migrations | Fresh database receives both checked-in migrations; model matches schema; reapplying is safe | Pass |
+| UTC timestamp storage | Database tests verify UTC values; migration columns use timestamp with time zone | Pass |
+| Public request fields | Name, phone, email, address, needs and optional rough availability | Pass |
+| Valid submissions | Blank optional fields accepted; client and booking stored; confirmation redirect returned | Pass |
+| Invalid submissions | Validation, honeypot and missing antiforgery token cannot create requests | Pass |
+| POST rate limits | Per-client and aggregate budgets tested; reads and rejected traffic do not spend unrelated capacity | Pass |
+| Admin authentication | Framework password hashing, role checks, secure HTTP-only cookies and production MFA | Pass |
+| Protected queue | Anonymous access redirects; authenticated operator sees requests; logout revokes copied cookies | Pass |
+| Repeat and concurrent clients | Email reuse preserves original client profile and each booking's submitted contact details | Pass |
+| Pacific display and pagination | Queue converts UTC to Pacific; page tests prevent missing or repeated requests | Pass |
+| Real customer rollout | No verified real-customer submission | Open |
 
-Production connection and admin configuration are present and match the local
-configured values. The original admin hash was a truncated placeholder, so a
-strong password and valid framework hash were generated and configured. Only the
-hash is stored in Azure and application user-secrets. The login is saved in the
-owner-only local file `~/.config/callout/admin-credentials.txt`, outside the
-repository. Secret values are not included in this report.
+## Local verification
 
-Production now contains one labelled verification client and booking. It was
-submitted through the public HTTP form, not inserted directly with SQL. Read-only
-Neon queries independently confirmed:
+- Locked dependency restore completed.
+- Release build completed with zero warnings and zero errors.
+- Full suite: **74 passed, 0 failed, 0 skipped** against a new PostgreSQL 18
+  cluster bound to loopback on port 55433.
+- Tests created randomly named databases, applied migrations and removed those
+  databases after execution. No application or production database credentials
+  were used for these tests.
+- Offline Phase 2 suite: **46 passed, 0 failed, 0 skipped** with the test database
+  connection variable unset and with build/restore disabled.
+- The availability input-limit test now lives outside the PostgreSQL fixture and
+  participates in the Phase 2 filter. Additional checks cover maximum search
+  duration, calendar event count, cancellation, clock consistency and date limits.
 
-- Client ID: `1`; booking ID: `1`; status: `Requested`.
-- Created at: `2026-09-15T18:44:22.382Z`.
-- Blank availability persisted as an empty string.
-- Scheduled start and end remain null.
-- Honeypot and invalid submissions created no client rows.
-- The authenticated admin queue displays the test email and booking address.
+The first local test attempt used a role absent from the existing development
+cluster. Creating a separate test cluster resolved the environment problem; no
+application change was needed.
 
-The record says `[TEST] Phase 0/1 verification` and `TEST ONLY - no service visit`.
-It is not a customer request or an appointment.
+## Production verification record
 
-PostgreSQL in every environment is the implemented replacement for the original
-SQLite development plan. One provider and migration set now cover local tests and
-production.
+The original labelled request was submitted through the live public form on
+September 15, 2026 at 18:44 UTC and independently verified in Neon and the admin
+queue. Its client and booking IDs are both 1, its status is Requested, and its
+scheduled start/end are null. It is not an appointment or a customer request.
 
-## Changes made
+The current live recheck confirmed that `/`, `/RequestForm`, `/Confirmation`,
+`/Login` and the local stylesheet return HTTP 200. Both request routes contain
+all expected fields and antiforgery tokens. Login offers MFA, anonymous admin
+access redirects to login, and responses carry the strict Content Security Policy.
+A fresh read-only Neon query confirmed both applied migrations and the original
+labelled test request still present with Requested status. A second request is
+not labelled as test data; the owner confirmed it was another test. Neither
+request satisfies the real-customer milestone.
 
-- Made the honeypot and rough availability nullable and safely stored blank
-  availability as an empty string.
-- Added the request form at `/`, retaining `/RequestForm`.
-- Excluded page views from both POST rate-limit quotas.
-- Handled empty login credentials as failed authentication instead of a server error.
-- Displayed each booking's address in the admin queue.
-- Added HTTP/PostgreSQL integration tests and PostgreSQL services in both workflows.
-- Made deployment run tests before publishing only the web project.
-- Corrected documentation that prematurely marked Phase 1 complete and claimed
-  `IBusyCalendar` already existed.
+A new authenticated production login could not be completed because macOS
+Keychain was waiting for access to the saved password. The successful live MFA
+and logout verification below is historical; the current local regression tests
+passed for both behaviors.
 
-## Validation
+The latest successful deployment is `29edade`. Earlier live verification covered
+MFA login, logout revocation, antiforgery and browser security headers, documented
+in [security operations](security-hardening.md).
 
-- Baseline: 7 failing and 6 passing tests exposed the submission, home route,
-  rate-limit, and blank-login problems.
-- After fixes: **13 passed, 0 failed, 0 skipped**, Release configuration.
-- A new isolated PostgreSQL 18 database received the checked-in migration. Tests
-  verified persistence, repeat-client matching, booking-address preservation,
-  UTC values, validation, honeypot rejection, antiforgery, request throttling,
-  login, protected queue access, logout, and migration/model consistency.
-- Test databases are created with unique names and removed after execution.
-- GitHub CI and the test-gated Azure deployment both succeeded for `e4020a8`.
-- Live HTTP checks passed for valid submission, confirmation, optional fields,
-  validation, honeypot rejection, antiforgery, repeated page views, incorrect and
-  blank login, valid admin login, secure HTTP-only cookie, queue visibility, and
-  logout. Neon independently confirmed the persisted record and rejected inputs.
-- PostgreSQL 18 was installed locally for verification. The temporary test server
-  was stopped afterward; no background service was enabled.
+## Changes since the earlier audit
 
-## Customer rollout
+The prior follow-up items have been implemented: local development uses a
+separate database, the queue displays Pacific time, concurrent email submissions
+recover from unique-index conflicts, and forwarded headers trust only configured
+proxies. Runtime and migration database permissions are separated. Production
+requires MFA and server-side session validation.
 
-The app is ready for a real client to submit a request at the
-[live form](https://callout-marin-cfe8guhza9cnfsf0.northcentralus-01.azurewebsites.net/).
-Using it with an actual customer satisfies the original plan's real-client
-milestone. No additional Phase 0/1 feature implementation is required.
+The original PostgreSQL-in-all-environments decision remains in effect. There is
+one database provider and one migration history for local tests and production.
 
-## Follow-up considerations
+## Remaining milestone
 
-- Local application user-secrets currently target the production database. Use a
-  separate development database for normal development, as the tests already do.
-- Admin timestamps currently use the server's local timezone. Configure Pacific
-  display time before adding scheduled appointments.
-- Concurrent first requests using the same email can race on the unique client
-  index. Add conflict recovery before treating concurrent submissions as supported.
-- Forwarded headers currently trust all proxies. Confirm the Azure ingress trust
-  boundary before exposing this app behind any additional proxy or direct endpoint.
-
-The existing untracked `MyWebApp`, `ScriptProject`, and `publish.zip` files were
-left intact. The checkout was fast-forwarded to the already-published deployment
-workflow commit before making these fixes.
+A real client needs to submit the [live request form](https://callout-marin-cfe8guhza9cnfsf0.northcentralus-01.azurewebsites.net/)
+and have their request appear in the production queue. This is an operational
+milestone, not a missing Phase 0/1 feature, and does not prevent work on the offline
+Phase 2 engine.

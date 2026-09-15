@@ -8,7 +8,7 @@
 - `SlotGenerationOptions`: configurable scheduling rules.
 - `SlotGenerator`: generates ordered, unique candidate slots.
 - `FakeBusyCalendar`: an in-memory adapter in Infrastructure for tests and demos.
-- 38 Phase 2 tests, passing without a database, web server, or network call.
+- 46 Phase 2 tests, passing without a database, web server, or network call.
 
 Core still has no external dependencies. The fake calendar is not registered in
 the production web app. This phase computes candidates; it does not confirm a
@@ -103,12 +103,13 @@ After restoring/building dependencies once, run the Phase 2 suite offline:
 dotnet test --no-build --no-restore --configuration Release --filter 'Phase=2'
 ```
 
-Verified result: **38 passed, 0 failed, 0 skipped**. Coverage includes overlapping,
+Verified result: **46 passed, 0 failed, 0 skipped**. Coverage includes overlapping,
 nested and duplicate busy blocks; adjacent-day events; swallowed gaps; off-grid
 event ends; absent and overlapping Marin windows; search-range clipping; UTC
 normalization; exact notice boundaries; configurable rules; DST changes;
-cancellation; calendar errors; and seeded comparisons against a direct
-candidate-by-candidate overlap check.
+cancellation before work and during calendar lookup; calendar errors; search and
+calendar-event limits; a single clock reading per request; and seeded comparisons
+against a direct candidate-by-candidate overlap check.
 
 ## Next phase
 
