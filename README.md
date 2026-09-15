@@ -6,6 +6,8 @@
 
 Phase 0/1 verification and remaining release steps: [audit](docs/phase-0-1-audit.md).
 
+Phase 2 is implemented: [offline availability engine and scheduling rules](docs/phase-2.md).
+
 Booking and invoicing system for a solo mobile tech-help business. Clients submit a
 request form, requests land in an admin queue, and the operator confirms a slot,
 logs the job, and produces an invoice.
@@ -70,6 +72,16 @@ dotnet run --project src/Callout.Web
 
 CI runs `restore`, `build`, and `test` on every push and pull request to `main`
 (see [.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+Run only the Phase 2 availability tests, without a database or network dependency:
+
+```bash
+dotnet test --no-build --no-restore --configuration Release --filter 'Phase=2'
+```
+
+Build once before using `--no-build`. The 38 availability tests use an in-memory
+calendar and fixed clock. The live request form remains the Phase 1 flow until
+Phase 3 adds the admin slot picker.
 
 ## HTTP and database tests
 

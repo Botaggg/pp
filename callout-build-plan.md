@@ -182,6 +182,8 @@ This is not architecture for its own sake. Google OAuth is the single most likel
 
 ### Phase 2: The availability engine, fully offline
 
+**Implemented:** see [Phase 2 behavior and verification](docs/phase-2.md).
+
 **Weekend 3.**
 
 1. Define `IBusyCalendar` and an `Interval` record in Core
