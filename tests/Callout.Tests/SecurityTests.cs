@@ -83,6 +83,130 @@ public class SecurityTests(PostgresDatabase database) : IClassFixture<PostgresDa
     }
 
     [PostgresFact]
+    public async Task UnrelatedPostsCannotBlockSubmissionOrLogout()
+    {
+        await using var baseFactory = new CalloutFactory(database.ConnectionString);
+        await using var factory = baseFactory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new SeparateTestPeers())));
+        using var visitor = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        using var admin = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        admin.DefaultRequestHeaders.Add("X-Test-Peer", "other");
+        var login = await Post(admin, "/Login", new() { ["Username"] = CalloutFactory.Username, ["Password"] = CalloutFactory.Password });
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        var cookie = login.Headers.GetValues("Set-Cookie").Single(x => x.StartsWith("callout.auth=")).Split(';')[0];
+
+        // Unmatched, read-only, unauthorized, and invalid-CSRF requests must not
+        // consume the shared admission budget for actual form handlers.
+        string[] paths = ["/not-a-page", "/Confirmation", "/AdminRequests?handler=Logout", "/RequestForm"];
+        for (var i = 0; i < 120; i++)
+            using (await visitor.PostAsync(paths[i % paths.Length], new FormUrlEncodedContent([]))) { }
+
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(admin, "/", Request($"quota-{Guid.NewGuid():N}@example.invalid"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(admin, "/AdminRequests?handler=Logout", new())).StatusCode);
+        using var replay = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false, HandleCookies = false });
+        replay.DefaultRequestHeaders.Add("Cookie", cookie);
+        Assert.Equal(HttpStatusCode.Redirect, (await replay.GetAsync("/AdminRequests")).StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task RejectedRequestPostsCannotSpendAnotherClientsAdmissionBudget()
+    {
+        await using var baseFactory = new CalloutFactory(database.ConnectionString);
+        await using var factory = baseFactory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new SeparateTestPeers())));
+        using var visitor = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        using var other = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        other.DefaultRequestHeaders.Add("X-Test-Peer", "other");
+        for (var i = 0; i < 110; i++)
+        {
+            using var response = await Post(visitor, i % 2 == 0 ? "/" : "/RequestForm", Request($"limited-{Guid.NewGuid():N}@example.invalid"));
+            Assert.Equal(i < 10 ? HttpStatusCode.Redirect : HttpStatusCode.TooManyRequests, response.StatusCode);
+        }
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(other, "/RequestForm", Request($"other-{Guid.NewGuid():N}@example.invalid"))).StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task RejectedLoginPostsCannotSpendAnotherClientsAdmissionBudget()
+    {
+        await using var baseFactory = new CalloutFactory(database.ConnectionString);
+        await using var factory = baseFactory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new SeparateTestPeers())));
+        using var visitor = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        using var other = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        other.DefaultRequestHeaders.Add("X-Test-Peer", "other");
+        for (var i = 0; i < 40; i++)
+        {
+            using var response = await Post(visitor, i % 2 == 0 ? "/Login" : "/login/", new() { ["Username"] = "wrong", ["Password"] = "wrong" });
+            Assert.Equal(i < 10 ? HttpStatusCode.OK : HttpStatusCode.TooManyRequests, response.StatusCode);
+        }
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(other, "/Login", new() { ["Username"] = CalloutFactory.Username, ["Password"] = CalloutFactory.Password })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await other.GetAsync("/AdminRequests")).StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task InvalidCsrfCannotConsumeAggregateCapacityAcrossClients()
+    {
+        await using var baseFactory = new CalloutFactory(database.ConnectionString);
+        await using var factory = baseFactory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new SeparateTestPeers())));
+        for (var i = 0; i < 110; i++)
+        {
+            using var visitor = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+            visitor.DefaultRequestHeaders.Add("X-Test-Peer", (i + 1).ToString());
+            Assert.Equal(HttpStatusCode.BadRequest, (await visitor.PostAsync("/RequestForm", new FormUrlEncodedContent(Request("csrf@example.invalid")))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await visitor.PostAsync("/Login", new FormUrlEncodedContent(new Dictionary<string, string>
+                { ["Username"] = "wrong", ["Password"] = "wrong" }))).StatusCode);
+        }
+        using var other = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        other.DefaultRequestHeaders.Add("X-Test-Peer", "200");
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(other, "/", Request($"csrf-control-{Guid.NewGuid():N}@example.invalid"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(other, "/Login", new() { ["Username"] = CalloutFactory.Username, ["Password"] = CalloutFactory.Password })).StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task AggregateSubmissionLimitIsPreservedWithoutBlockingLogout()
+    {
+        await using var baseFactory = new CalloutFactory(database.ConnectionString);
+        await using var factory = baseFactory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new SeparateTestPeers())));
+        using var admin = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        admin.DefaultRequestHeaders.Add("X-Test-Peer", "200");
+        var login = await Post(admin, "/Login", new() { ["Username"] = CalloutFactory.Username, ["Password"] = CalloutFactory.Password });
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        var cookie = login.Headers.GetValues("Set-Cookie").Single(x => x.StartsWith("callout.auth=")).Split(';')[0];
+        for (var i = 0; i < 101; i++)
+        {
+            using var visitor = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+            visitor.DefaultRequestHeaders.Add("X-Test-Peer", (i / 10 + 1).ToString());
+            using var response = await Post(visitor, i % 2 == 0 ? "/" : "/RequestForm", Request($"aggregate-{Guid.NewGuid():N}@example.invalid"));
+            Assert.Equal(i < 100 ? HttpStatusCode.Redirect : HttpStatusCode.TooManyRequests, response.StatusCode);
+        }
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(admin, "/AdminRequests?handler=Logout", new())).StatusCode);
+        using var replay = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false, HandleCookies = false });
+        replay.DefaultRequestHeaders.Add("Cookie", cookie);
+        Assert.Equal(HttpStatusCode.Redirect, (await replay.GetAsync("/AdminRequests")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(admin, "/Login", new() { ["Username"] = CalloutFactory.Username, ["Password"] = CalloutFactory.Password })).StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task AggregateLoginLimitIsPreservedWithoutBlockingSubmission()
+    {
+        await using var baseFactory = new CalloutFactory(database.ConnectionString);
+        await using var factory = baseFactory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IStartupFilter>(new SeparateTestPeers())));
+        for (var i = 0; i < 31; i++)
+        {
+            using var visitor = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+            visitor.DefaultRequestHeaders.Add("X-Test-Peer", (i / 10 + 1).ToString());
+            using var response = await Post(visitor, i % 2 == 0 ? "/Login" : "/login/", new() { ["Username"] = "wrong", ["Password"] = "wrong" });
+            Assert.Equal(i < 30 ? HttpStatusCode.OK : HttpStatusCode.TooManyRequests, response.StatusCode);
+        }
+        using var other = factory.CreateClient(new() { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        other.DefaultRequestHeaders.Add("X-Test-Peer", "200");
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(other, "/RequestForm", Request($"login-capacity-{Guid.NewGuid():N}@example.invalid"))).StatusCode);
+    }
+
+    [PostgresFact]
     public async Task Verified_RazorEscapesClientHtmlAndIgnoresPostedBookingState()
     {
         await using var factory = new CalloutFactory(database.ConnectionString);
@@ -212,6 +336,24 @@ public class SecurityTests(PostgresDatabase database) : IClassFixture<PostgresDa
         // Avoid affecting other tests' first-page expectations.
         await db.Bookings.Where(b => b.ClientId == client.Id).ExecuteDeleteAsync();
         await db.Clients.Where(c => c.Id == client.Id).ExecuteDeleteAsync();
+    }
+
+    // This header is interpreted only by the test host, never by application code.
+    private sealed class SeparateTestPeers : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (context, invokeNext) =>
+            {
+                var peer = context.Request.Headers["X-Test-Peer"].ToString();
+                context.Connection.RemoteIpAddress = IPAddress.Parse(
+                    int.TryParse(peer, out var number) && number is > 0 and < 255
+                        ? $"198.51.100.{number}"
+                        : peer == "other" ? "203.0.113.20" : "203.0.113.10");
+                await invokeNext();
+            });
+            next(app);
+        };
     }
 
     private sealed class UntrustedPeer : IStartupFilter

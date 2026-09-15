@@ -28,7 +28,7 @@ public class RequestFormModel : PageModel
     {
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync([FromServices] PostAdmissionLimits admission)
     {
         // Honeypot. Real users never see this field, so anything in it is a bot.
         // Redirect as if it worked so the bot gets no signal that it was caught.
@@ -42,6 +42,8 @@ public class RequestFormModel : PageModel
         {
             return Page();
         }
+
+        if (!admission.TryAcquireRequest()) return StatusCode(StatusCodes.Status429TooManyRequests);
 
         var email = Input.Email.Trim().ToLowerInvariant();
 
