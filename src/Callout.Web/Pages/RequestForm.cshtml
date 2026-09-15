@@ -1,36 +1,54 @@
 @page
-@model Callout.Web.Models.RequestFormModel
+@model Callout.Web.Pages.RequestFormModel
+@{
+    ViewData["Title"] = "Request tech help";
+}
 
-<div class="max-w-lg mx-auto p-6 bg-white shadow-md rounded-lg">
-    <h1 class="text-2xl font-bold mb-4">Book a Tech Help Session</h1>
+<div class="max-w-lg mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
+    <h1 class="text-2xl font-bold mb-1">Book a tech help session</h1>
+    <p class="text-sm text-gray-600 mb-4">$30/hr, one hour minimum. I come to you.</p>
+
+    <div asp-validation-summary="ModelOnly" class="text-red-600 text-sm mb-3"></div>
+
     <form method="post" class="space-y-4">
         <div>
-            <label for="Name" class="block text-sm font-medium">Name</label>
-            <input type="text" id="Name" asp-for="Input.Name" required class="border p-2 rounded w-full" />
+            <label asp-for="Input.Name" class="block text-sm font-medium">Name</label>
+            <input asp-for="Input.Name" class="border p-2 rounded w-full" />
+            <span asp-validation-for="Input.Name" class="text-red-600 text-sm"></span>
         </div>
         <div>
-            <label for="Phone" class="block text-sm font-medium">Phone</label>
-            <input type="tel" id="Phone" asp-for="Input.Phone" required class="border p-2 rounded w-full" />
+            <label asp-for="Input.Phone" class="block text-sm font-medium">Phone</label>
+            <input asp-for="Input.Phone" type="tel" class="border p-2 rounded w-full" />
+            <span asp-validation-for="Input.Phone" class="text-red-600 text-sm"></span>
         </div>
         <div>
-            <label for="Email" class="block text-sm font-medium">Email</label>
-            <input type="email" id="Email" asp-for="Input.Email" required class="border p-2 rounded w-full" />
+            <label asp-for="Input.Email" class="block text-sm font-medium">Email</label>
+            <input asp-for="Input.Email" type="email" class="border p-2 rounded w-full" />
+            <span asp-validation-for="Input.Email" class="text-red-600 text-sm"></span>
         </div>
         <div>
-            <label for="Address" class="block text-sm font-medium">Address</label>
-            <textarea id="Address" asp-for="Input.Address" required class="border p-2 rounded w-full"></textarea>
+            <label asp-for="Input.Address" class="block text-sm font-medium">Address</label>
+            <textarea asp-for="Input.Address" rows="2" class="border p-2 rounded w-full"></textarea>
+            <span asp-validation-for="Input.Address" class="text-red-600 text-sm"></span>
         </div>
         <div>
-            <label for="Needs" class="block text-sm font-medium">What do you need?</label>
-            <textarea id="Needs" asp-for="Input.Needs" required class="border p-2 rounded w-full"></textarea>
+            <label asp-for="Input.Needs" class="block text-sm font-medium">What do you need?</label>
+            <textarea asp-for="Input.Needs" rows="4" class="border p-2 rounded w-full"></textarea>
+            <span asp-validation-for="Input.Needs" class="text-red-600 text-sm"></span>
         </div>
         <div>
-            <label for="Availability" class="block text-sm font-medium">Rough Availability</label>
-            <input type="text" id="Availability" asp-for="Input.Availability" class="border p-2 rounded w-full" />
+            <label asp-for="Input.Availability" class="block text-sm font-medium">Rough availability</label>
+            <input asp-for="Input.Availability" class="border p-2 rounded w-full" placeholder="Weekday evenings, most of Saturday" />
+            <span asp-validation-for="Input.Availability" class="text-red-600 text-sm"></span>
         </div>
-        <!-- Honeypot field -->
-        <input type="hidden" name="Honeypot" asp-for="Input.Honeypot" />
 
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Submit Request</button>
+        @* Honeypot. Positioned off-screen rather than type="hidden" so that bots
+           which fill every visible-in-the-DOM input still take the bait. *@
+        <div aria-hidden="true" style="position:absolute; left:-9999px; top:-9999px;">
+            <label asp-for="Input.Website">Website</label>
+            <input asp-for="Input.Website" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Submit request</button>
     </form>
 </div>
