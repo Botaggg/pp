@@ -2,6 +2,10 @@
 
 ![CI](https://github.com/Botaggg/pp/actions/workflows/ci.yml/badge.svg)
 
+[Live request form](https://callout-marin-cfe8guhza9cnfsf0.northcentralus-01.azurewebsites.net/RequestForm)
+
+Phase 0/1 verification and remaining release steps: [audit](docs/phase-0-1-audit.md).
+
 Booking and invoicing system for a solo mobile tech-help business. Clients submit a
 request form, requests land in an admin queue, and the operator confirms a slot,
 logs the job, and produces an invoice.
@@ -19,7 +23,11 @@ Callout.slnx
 ```
 
 Dependencies point one direction only: `Core` references nothing,
-`Infrastructure` to `Core`, `Web` to `Infrastructure`, `Tests` to `Core`.
+`Infrastructure` to `Core`, `Web` to `Core` and `Infrastructure`, and `Tests` to
+`Core` and `Web` for HTTP/database integration tests.
+
+PostgreSQL is used in every environment. This replaces the original build plan's
+SQLite development option, keeping local and production migrations identical.
 
 ## Configuration
 
@@ -62,3 +70,22 @@ dotnet run --project src/Callout.Web
 
 CI runs `restore`, `build`, and `test` on every push and pull request to `main`
 (see [.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+## HTTP and database tests
+
+The integration suite exercises real Razor Pages requests, authentication,
+antiforgery, rate limiting, and EF migrations against PostgreSQL 18. Point it at a
+**local or disposable test server** whose user can create databases:
+
+```bash
+CALLOUT_TEST_CONNECTION_STRING='Host=localhost;Database=postgres;Username=postgres;Password=your-local-test-password' \
+  dotnet test --configuration Release
+```
+
+Tests create a randomly named `callout_test_*` database, apply the checked-in
+migrations, and remove that database when finished. They never read application
+database credentials. Without this variable, the database tests are explicitly
+skipped; a unit-only pass does not verify Phase 1.
+
+Both CI and the Azure deployment workflow provide a temporary PostgreSQL service.
+Deployment runs the tests before publishing only `Callout.Web`.

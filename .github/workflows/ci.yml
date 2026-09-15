@@ -10,6 +10,24 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: callout_test
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U callout_test -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      CALLOUT_TEST_CONNECTION_STRING: Host=localhost;Port=5432;Database=postgres;Username=callout_test;Password=local-ci-only
+
     steps:
       - uses: actions/checkout@v4
 

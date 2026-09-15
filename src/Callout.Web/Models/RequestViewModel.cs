@@ -33,11 +33,11 @@ public class RequestViewModel
 
     [StringLength(300)]
     [Display(Name = "Rough availability")]
-    public string Availability { get; set; } = string.Empty;
+    public string? Availability { get; set; }
 
     /// <summary>
     /// Honeypot. Hidden from real users with CSS, so a human never fills it in.
     /// Any submission with a value here is discarded.
     /// </summary>
-    public string Website { get; set; } = string.Empty;
+    public string? Website { get; set; }
 }

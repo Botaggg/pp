@@ -71,7 +71,7 @@ public class RequestFormModel : PageModel
             Client = client,
             Description = Input.Needs.Trim(),
             Address = Input.Address.Trim(),
-            PreferredAvailability = Input.Availability.Trim(),
+            PreferredAvailability = Input.Availability?.Trim() ?? string.Empty,
             CreatedAtUtc = DateTimeOffset.UtcNow,
             Status = BookingStatus.Requested
         };

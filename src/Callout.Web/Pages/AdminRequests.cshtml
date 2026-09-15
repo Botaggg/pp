@@ -24,6 +24,7 @@
                     <th class="border p-2">Received</th>
                     <th class="border p-2">Client</th>
                     <th class="border p-2">Contact</th>
+                    <th class="border p-2">Address</th>
                     <th class="border p-2">Needs</th>
                     <th class="border p-2">Availability</th>
                     <th class="border p-2">Status</th>
@@ -39,6 +40,7 @@
                             <div>@booking.Client?.Phone</div>
                             <div class="text-gray-600">@booking.Client?.Email</div>
                         </td>
+                        <td class="border p-2">@booking.Address</td>
                         <td class="border p-2">@booking.Description</td>
                         <td class="border p-2 text-sm text-gray-600">@booking.PreferredAvailability</td>
                         <td class="border p-2">@booking.Status</td>

@@ -20,7 +20,8 @@ if (args.Length > 0 && args[0] == "hash-password")
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+    options.Conventions.AddPageRoute("/RequestForm", ""));
 
 // Postgres everywhere. Local: user-secrets. Production: App Service application settings.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -49,7 +50,9 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     options.AddPolicy("request-form", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+        !HttpMethods.IsPost(context.Request.Method)
+        ? RateLimitPartition.GetNoLimiter("read")
+        : RateLimitPartition.GetFixedWindowLimiter(
             ClientKey(context),
             _ => new FixedWindowRateLimiterOptions
             {
@@ -59,7 +62,9 @@ builder.Services.AddRateLimiter(options =>
             }));
 
     options.AddPolicy("login", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+        !HttpMethods.IsPost(context.Request.Method)
+        ? RateLimitPartition.GetNoLimiter("read")
+        : RateLimitPartition.GetFixedWindowLimiter(
             ClientKey(context),
             _ => new FixedWindowRateLimiterOptions
             {
@@ -125,3 +130,6 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 app.Run();
+
+// Expose the entry point for HTTP integration tests.
+public partial class Program { }

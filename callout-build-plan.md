@@ -2,8 +2,8 @@
 
 Booking and invoicing system for a solo mobile tech-help business.
 
-**Repo:** `github.com/hlibku/callout`
-**Stack:** .NET 10, ASP.NET Core Razor Pages, EF Core, SQLite local / Postgres production, Google Calendar API, QuestPDF, xUnit
+**Repo:** `github.com/Botaggg/pp`
+**Stack:** .NET 10, ASP.NET Core Razor Pages, EF Core, PostgreSQL in all environments, Google Calendar API, QuestPDF, xUnit
 **Timeline:** 8 weekends, each ending in something shippable
 
 ---
@@ -142,7 +142,7 @@ This is not architecture for its own sake. Google OAuth is the single most likel
 1. Install the .NET 10 SDK
 2. `dotnet new sln -n Callout`
 3. Create the four projects and wire the references as shown above
-4. `dotnet new gitignore`, initial commit, push to `github.com/hlibku/callout`
+4. `dotnet new gitignore`, initial commit, push to `github.com/Botaggg/pp`
 5. Add `.github/workflows/ci.yml` that runs restore, build, and test on every push. Put the badge in the README
 6. Create an Azure for Students account with your ucmerced.edu address. This gives you credit with no credit card
 7. Deploy the blank Web project to App Service free tier
@@ -160,9 +160,9 @@ This is not architecture for its own sake. Google OAuth is the single most likel
 **Weekend 2.**
 
 1. Add `Client` and `Booking` to Core. Nothing else yet
-2. Add `CalloutDbContext` in Infrastructure. Configure the provider by environment: SQLite locally, Postgres in production
+2. Add `CalloutDbContext` in Infrastructure. Use PostgreSQL locally and in production so one migration set covers both (updated implementation decision)
 3. Sign up for Neon Postgres free tier. It does not expire
-4. First migration, applied to both
+4. First migration, verified on local PostgreSQL and applied to Neon production
 5. Build the public request form: name, phone, email, address, what they need, rough availability
 6. Add a hidden honeypot field. Real users never fill it, bots always do. Reject any submission where it has a value
 7. Add ASP.NET Core's built-in fixed-window rate limiter on the POST endpoint

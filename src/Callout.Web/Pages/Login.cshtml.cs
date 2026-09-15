@@ -21,10 +21,10 @@ public class LoginModel : PageModel
     }
 
     [BindProperty]
-    public string Username { get; set; } = string.Empty;
+    public string? Username { get; set; }
 
     [BindProperty]
-    public string Password { get; set; } = string.Empty;
+    public string? Password { get; set; }
 
     public string? Error { get; set; }
 
@@ -37,7 +37,7 @@ public class LoginModel : PageModel
         // Always run the hash verification, even when the username is wrong, so the
         // response time does not reveal whether the username exists.
         var hasher = new PasswordHasher<object>();
-        var passwordOk = hasher.VerifyHashedPassword(null!, _admin.PasswordHash, Password)
+        var passwordOk = hasher.VerifyHashedPassword(null!, _admin.PasswordHash, Password ?? string.Empty)
             != PasswordVerificationResult.Failed;
         var usernameOk = string.Equals(Username, _admin.Username, StringComparison.Ordinal);
 
