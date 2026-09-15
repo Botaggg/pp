@@ -1,0 +1,33 @@
+@page
+@model Callout.Web.Pages.AdminRequestsModel
+@{
+    ViewData["Title"] = "Incoming Requests";
+}
+
+<div class="max-w-4xl mx-auto p-6">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">Incoming Requests</h1>
+        <form method="post" asp-page-handler="Logout">
+            <button type="submit" class="text-sm text-gray-600 hover:text-gray-900 underline">Log out</button>
+        </form>
+    </div>
+    <table class="min-w-full border">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="border p-2">Client</th>
+                <th class="border p-2">Description</th>
+                <th class="border p-2">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var booking in Model.Bookings)
+            {
+                <tr>
+                    <td class="border p-2">@booking.Client?.Name</td>
+                    <td class="border p-2">@booking.Description</td>
+                    <td class="border p-2">@booking.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

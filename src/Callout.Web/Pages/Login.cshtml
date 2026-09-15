@@ -1,0 +1,24 @@
+@page
+@model Callout.Web.Pages.LoginModel
+@{
+    ViewData["Title"] = "Admin Login";
+}
+
+<div class="max-w-sm mx-auto p-6 bg-white shadow-md rounded-lg mt-16">
+    <h1 class="text-2xl font-bold mb-4">Admin Login</h1>
+    <form method="post" class="space-y-4">
+        <div>
+            <label for="Username" class="block text-sm font-medium">Username</label>
+            <input type="text" id="Username" asp-for="Username" class="border p-2 rounded w-full" />
+        </div>
+        <div>
+            <label for="Password" class="block text-sm font-medium">Password</label>
+            <input type="password" id="Password" asp-for="Password" class="border p-2 rounded w-full" />
+        </div>
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <p class="text-red-600 text-sm">@Model.Error</p>
+        }
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Log in</button>
+    </form>
+</div>
