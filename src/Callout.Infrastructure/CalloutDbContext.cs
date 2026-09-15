@@ -12,8 +12,15 @@ public class CalloutDbContext : DbContext
     public DbSet<Booking> Bookings { get; set; } = null!;
     public DbSet<Client> Clients { get; set; } = null!;
 
+    public DbSet<AdminSession> AdminSessions => Set<AdminSession>();
+    public DbSet<UsedAdminCode> UsedAdminCodes => Set<UsedAdminCode>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AdminSession>().Property(s => s.CredentialVersion).HasMaxLength(64);
+        modelBuilder.Entity<AdminSession>().HasIndex(s => s.ExpiresAtUtc);
+        modelBuilder.Entity<UsedAdminCode>().Property(c => c.Id).HasMaxLength(160);
+        modelBuilder.Entity<UsedAdminCode>().HasIndex(c => c.ExpiresAtUtc);
         var client = modelBuilder.Entity<Client>();
         client.Property(c => c.Name).HasMaxLength(120).IsRequired();
         client.Property(c => c.Phone).HasMaxLength(40).IsRequired();
@@ -23,6 +30,9 @@ public class CalloutDbContext : DbContext
         client.HasIndex(c => c.Email).IsUnique();
 
         var booking = modelBuilder.Entity<Booking>();
+        booking.Property(b => b.SubmittedName).HasMaxLength(120).IsRequired();
+        booking.Property(b => b.SubmittedPhone).HasMaxLength(40).IsRequired();
+        booking.Property(b => b.SubmittedEmail).HasMaxLength(200).IsRequired();
         booking.Property(b => b.Description).HasMaxLength(2000).IsRequired();
         booking.Property(b => b.Address).HasMaxLength(300).IsRequired();
         booking.Property(b => b.PreferredAvailability).HasMaxLength(300);

@@ -61,6 +61,7 @@ public sealed class CalloutFactory(string connectionString) : WebApplicationFact
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:DefaultConnection", connectionString);
         builder.UseSetting("Admin:Username", Username);
+        builder.UseSetting("Admin:TotpSecret", "");
         builder.UseSetting("Admin:PasswordHash", new PasswordHasher<object>().HashPassword(null!, Password));
     }
 

@@ -44,7 +44,7 @@
 
         @* Honeypot. Positioned off-screen rather than type="hidden" so that bots
            which fill every visible-in-the-DOM input still take the bait. *@
-        <div aria-hidden="true" style="position:absolute; left:-9999px; top:-9999px;">
+        <div aria-hidden="true" class="honeypot">
             <label asp-for="Input.Website">Website</label>
             <input asp-for="Input.Website" type="text" tabindex="-1" autocomplete="off" />
         </div>

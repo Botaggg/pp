@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Callout.Web.Pages;
 
@@ -58,17 +59,13 @@ public class RequestFormModel : PageModel
             };
             _context.Clients.Add(client);
         }
-        else
-        {
-            // Keep the latest contact details they gave us.
-            client.Name = Input.Name.Trim();
-            client.Phone = Input.Phone.Trim();
-            client.Address = Input.Address.Trim();
-        }
 
         var booking = new Booking
         {
             Client = client,
+            SubmittedName = Input.Name.Trim(),
+            SubmittedPhone = Input.Phone.Trim(),
+            SubmittedEmail = email,
             Description = Input.Needs.Trim(),
             Address = Input.Address.Trim(),
             PreferredAvailability = Input.Availability?.Trim() ?? string.Empty,
@@ -78,7 +75,22 @@ public class RequestFormModel : PageModel
         _context.Bookings.Add(booking);
 
         // One save, so a client is never written without its booking.
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync(HttpContext.RequestAborted);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_Clients_Email" })
+        {
+            // A concurrent request created this email first. The failed save was atomic.
+            // Reuse its identity without accepting anonymous changes to its profile.
+            _context.ChangeTracker.Clear();
+            booking.Id = 0;
+            booking.Client = await _context.Clients.SingleAsync(c => c.Email == email, HttpContext.RequestAborted);
+            booking.ClientId = booking.Client.Id;
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync(HttpContext.RequestAborted);
+        }
 
         return RedirectToPage("Confirmation");
     }

@@ -72,7 +72,8 @@ public class Phase01Tests(PostgresDatabase database) : IClassFixture<PostgresDat
         await using var db = database.CreateContext();
         var client = await db.Clients.Include(c => c.Bookings).SingleAsync(c => c.Email == fields["Input.Email"]);
         Assert.Equal(2, client.Bookings.Count);
-        Assert.Equal("New address", client.Address);
+        Assert.Equal("Test address", client.Address);
+        Assert.Contains(client.Bookings, b => b.Address == "New address");
         Assert.Contains(client.Bookings, b => b.Address == "Test address");
     }
 

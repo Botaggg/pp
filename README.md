@@ -101,3 +101,7 @@ skipped; a unit-only pass does not verify Phase 1.
 
 Both CI and the Azure deployment workflow provide a temporary PostgreSQL service.
 Deployment runs the tests before publishing only `Callout.Web`.
+
+## Security
+
+See [security hardening and operations](docs/security-hardening.md) for admin MFA, session revocation, database permissions and migration procedures.

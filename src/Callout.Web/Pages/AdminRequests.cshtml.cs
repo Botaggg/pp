@@ -9,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Callout.Web.Pages;
 
-[Authorize]
+[Authorize(Roles = "Admin")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class AdminRequestsModel : PageModel
 {
     private readonly CalloutDbContext _context;
@@ -21,17 +22,26 @@ public class AdminRequestsModel : PageModel
 
     public List<Booking> Bookings { get; set; } = new();
 
-    public async Task OnGetAsync()
+    public const int PageSize = 50;
+    public int PageNumber { get; private set; }
+    public bool HasNextPage { get; private set; }
+
+    public async Task OnGetAsync(int pageNumber = 1)
     {
+        PageNumber = Math.Clamp(pageNumber, 1, 100000);
         Bookings = await _context.Bookings
             .AsNoTracking()
-            .Include(b => b.Client)
             .OrderByDescending(b => b.CreatedAtUtc)
-            .ToListAsync();
+            .ThenByDescending(b => b.Id)
+            .Skip((PageNumber - 1) * PageSize).Take(PageSize + 1)
+            .ToListAsync(HttpContext.RequestAborted);
+        HasNextPage = Bookings.Count > PageSize;
+        if (HasNextPage) Bookings.RemoveAt(PageSize);
     }
 
-    public async Task<IActionResult> OnPostLogoutAsync()
+    public async Task<IActionResult> OnPostLogoutAsync([FromServices] AdminSessionSecurity sessions)
     {
+        await sessions.RevokeAsync(User, HttpContext.RequestAborted);
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToPage("/Login");
     }

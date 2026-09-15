@@ -5,9 +5,8 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Callout.Web;
 
 /// <summary>
-/// Used only by `dotnet ef` at design time. It reads the same configuration the app
-/// does, so migrations run against the real database, and falls back to a local
-/// placeholder so `migrations add` still works on a fresh clone with no secrets set.
+/// Used only by migrations. Production migration credentials are supplied explicitly
+/// through ConnectionStrings__MigrationConnection and never used by the web app.
 /// </summary>
 public class CalloutDbContextFactory : IDesignTimeDbContextFactory<CalloutDbContext>
 {
@@ -20,10 +19,11 @@ public class CalloutDbContextFactory : IDesignTimeDbContextFactory<CalloutDbCont
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var connectionString = configuration.GetConnectionString("MigrationConnection")
+            ?? configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            connectionString = "Host=localhost;Database=callout;Username=postgres;Password=postgres";
+            connectionString = "Host=localhost;Database=callout_dev;Username=callout_dev_app";
         }
 
         var options = new DbContextOptionsBuilder<CalloutDbContext>()

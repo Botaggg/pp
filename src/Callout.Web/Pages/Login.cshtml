@@ -15,6 +15,13 @@
             <label for="Password" class="block text-sm font-medium">Password</label>
             <input type="password" id="Password" asp-for="Password" class="border p-2 rounded w-full" />
         </div>
+        @if (Model.RequiresCode)
+        {
+            <div>
+                <label asp-for="Code" class="block text-sm font-medium">Authenticator or recovery code</label>
+                <input asp-for="Code" autocomplete="one-time-code" maxlength="80" class="border p-2 rounded w-full" />
+            </div>
+        }
         @if (!string.IsNullOrEmpty(Model.Error))
         {
             <p class="text-red-600 text-sm">@Model.Error</p>

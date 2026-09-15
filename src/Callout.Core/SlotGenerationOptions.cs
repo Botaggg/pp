@@ -15,13 +15,13 @@ public sealed record SlotGenerationOptions
         ArgumentNullException.ThrowIfNull(TimeZone);
         if (WorkingDayEnd <= WorkingDayStart)
             throw new ArgumentException("Working hours must start and end on the same day, with end after start.");
-        if (SlotDuration <= TimeSpan.Zero)
+        if (SlotDuration < TimeSpan.FromMinutes(1) || SlotDuration > TimeSpan.FromDays(1))
             throw new ArgumentOutOfRangeException(nameof(SlotDuration));
-        if (SlotStep <= TimeSpan.Zero)
+        if (SlotStep < TimeSpan.FromMinutes(1) || SlotStep > TimeSpan.FromDays(1))
             throw new ArgumentOutOfRangeException(nameof(SlotStep));
-        if (TravelBuffer < TimeSpan.Zero)
+        if (TravelBuffer < TimeSpan.Zero || TravelBuffer > TimeSpan.FromDays(1))
             throw new ArgumentOutOfRangeException(nameof(TravelBuffer));
-        if (MinimumNotice < TimeSpan.Zero)
+        if (MinimumNotice < TimeSpan.Zero || MinimumNotice > TimeSpan.FromDays(366))
             throw new ArgumentOutOfRangeException(nameof(MinimumNotice));
     }
 }

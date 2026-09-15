@@ -4,6 +4,11 @@ public class Booking
 {
     public int Id { get; set; }
 
+    // Submitted contact details belong to this request, not the matching client profile.
+    public string SubmittedName { get; set; } = string.Empty;
+    public string SubmittedPhone { get; set; } = string.Empty;
+    public string SubmittedEmail { get; set; } = string.Empty;
+
     public string Description { get; set; } = string.Empty;
 
     public string Address { get; set; } = string.Empty;

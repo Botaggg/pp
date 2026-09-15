@@ -31,11 +31,18 @@ public sealed class SlotGenerator
             throw new ArgumentException("Search end date must be on or after its start date.", nameof(throughDate));
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (throughDate.DayNumber - fromDate.DayNumber > 365)
+            throw new ArgumentOutOfRangeException(nameof(throughDate), "Search at most 366 days at a time.");
+        if (fromDate.Year < 2 || throughDate.Year > 9998)
+            throw new ArgumentOutOfRangeException(nameof(fromDate), "Dates must leave room for time-zone and buffer conversions.");
         // Read the clock once so all slots use exactly the same notice boundary.
         var earliestStart = _clock.GetUtcNow() + _options.MinimumNotice;
         var dates = new SortedSet<DateOnly>();
+        var windowCount = 0;
         foreach (var window in availabilityWindows)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (++windowCount > 366) throw new ArgumentException("At most 366 availability windows are allowed.", nameof(availabilityWindows));
             ArgumentNullException.ThrowIfNull(window);
             var first = window.StartDate > fromDate ? window.StartDate : fromDate;
             var last = window.EndDate < throughDate ? window.EndDate : throughDate;
@@ -63,6 +70,7 @@ public sealed class SlotGenerator
             workingIntervals[^1].End + _options.TravelBuffer,
             cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        if (busy.Count > 10000) throw new InvalidOperationException("Calendar returned too many events.");
         var blocked = Merge(busy.Select(interval => new Interval(
             interval.Start - _options.TravelBuffer, interval.End + _options.TravelBuffer)));
 

@@ -1,6 +1,4 @@
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -12,19 +10,25 @@ namespace Callout.Web.Pages;
 public class LoginModel : PageModel
 {
     private readonly AdminCredentials _admin;
+    private readonly AdminSessionSecurity _sessions;
     private readonly ILogger<LoginModel> _logger;
 
-    public LoginModel(AdminCredentials admin, ILogger<LoginModel> logger)
+    public LoginModel(AdminCredentials admin, ILogger<LoginModel> logger, AdminSessionSecurity sessions)
     {
         _admin = admin;
+        _sessions = sessions;
         _logger = logger;
     }
 
-    [BindProperty]
+    [BindProperty, Required, StringLength(120)]
     public string? Username { get; set; }
 
-    [BindProperty]
+    [BindProperty, Required, StringLength(1024)]
     public string? Password { get; set; }
+
+    [BindProperty, StringLength(80)]
+    public string? Code { get; set; }
+    public bool RequiresCode => !string.IsNullOrEmpty(_admin.TotpSecret);
 
     public string? Error { get; set; }
 
@@ -34,6 +38,11 @@ public class LoginModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (!ModelState.IsValid)
+        {
+            Error = "Invalid username or password.";
+            return Page();
+        }
         // Always run the hash verification, even when the username is wrong, so the
         // response time does not reveal whether the username exists.
         var hasher = new PasswordHasher<object>();
@@ -48,15 +57,12 @@ public class LoginModel : PageModel
             return Page();
         }
 
-        var claims = new List<Claim>
+        if (!await _sessions.SignInAsync(HttpContext, Code))
         {
-            new Claim(ClaimTypes.Name, _admin.Username),
-            new Claim(ClaimTypes.Role, "Admin")
-        };
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        var principal = new ClaimsPrincipal(identity);
-
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            _logger.LogWarning("Failed admin second-factor verification.");
+            Error = "Invalid or already used sign-in code.";
+            return Page();
+        }
         return RedirectToPage("/AdminRequests");
     }
 }

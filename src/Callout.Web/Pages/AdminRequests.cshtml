@@ -12,6 +12,7 @@
         </form>
     </div>
 
+    <p class="text-sm text-gray-600 mb-4">Contact details are supplied by visitors and have not been verified. Times are Pacific.</p>
     @if (Model.Bookings.Count == 0)
     {
         <p class="text-gray-600">No requests yet.</p>
@@ -34,11 +35,11 @@
                 @foreach (var booking in Model.Bookings)
                 {
                     <tr class="align-top">
-                        <td class="border p-2 whitespace-nowrap">@booking.CreatedAtUtc.ToLocalTime().ToString("MMM d, h:mm tt")</td>
-                        <td class="border p-2">@booking.Client?.Name</td>
+                        <td class="border p-2 whitespace-nowrap">@TimeZoneInfo.ConvertTime(booking.CreatedAtUtc, TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles")).ToString("MMM d, h:mm tt")</td>
+                        <td class="border p-2">@booking.SubmittedName</td>
                         <td class="border p-2 text-sm">
-                            <div>@booking.Client?.Phone</div>
-                            <div class="text-gray-600">@booking.Client?.Email</div>
+                            <div>@booking.SubmittedPhone</div>
+                            <div class="text-gray-600">@booking.SubmittedEmail</div>
                         </td>
                         <td class="border p-2">@booking.Address</td>
                         <td class="border p-2">@booking.Description</td>
@@ -50,3 +51,9 @@
         </table>
     }
 </div>
+
+<nav class="max-w-5xl mx-auto p-6" aria-label="Request pages">
+    @if (Model.PageNumber > 1) { <a asp-route-pageNumber="@(Model.PageNumber - 1)" class="underline">Previous</a> }
+    <span>Page @Model.PageNumber</span>
+    @if (Model.HasNextPage) { <a asp-route-pageNumber="@(Model.PageNumber + 1)" class="underline">Next</a> }
+</nav>
