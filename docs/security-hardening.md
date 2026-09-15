@@ -38,3 +38,14 @@ This development cluster contains no production copy. Its `/tmp` location is dis
 ### Ongoing responsibilities
 
 Review dependency and CodeQL alerts, keep Azure and GitHub administrator accounts protected by MFA, periodically test restoring database backups, and update protections as new endpoints or integrations are added. The public form accepts unverified requests; verify the requester before granting access to existing customer information or making sensitive changes. This hardening closes the audited paths and adds regression checks; it does not guarantee freedom from future vulnerabilities, phishing, provider outages, or denial of service.
+
+## Verified release, September 15, 2026
+
+- 61 tests passed against PostgreSQL, including the security regression suite.
+- The additive migration passed on a separate Neon branch before production. The temporary branch was deleted with owner approval.
+- Live verification passed for mandatory MFA, admin access, logout invalidating a copied cookie, antiforgery rejection, local CSS and security headers.
+- Production uses `callout_web` with certificate-verified TLS; runtime DDL, client updates and booking deletion are denied. Local development uses its own empty database.
+- CI, deployment and CodeQL completed successfully. CodeQL reported no open alerts on main.
+- Main now requires pull requests, up-to-date branches, resolved conversations and the `build-and-test`, `codeql`, and `CodeQL` checks, including for administrators. Force pushes and branch deletion are blocked.
+- GitHub dependency alerts, security-update pull requests, secret scanning, push protection and private vulnerability reporting are enabled.
+- The production password and database migration connection were stored and read back successfully from macOS Keychain. Temporary plaintext copies were removed. The private authenticator setup file must be moved into the owner's authenticator/password manager and removed after enrollment.
