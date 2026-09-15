@@ -49,7 +49,7 @@ Migrations are scaffolded against a design-time factory, so adding one does not 
 a live database:
 
 ```bash
-dotnet ef migrations add <Name> -p src/Callout.Infrastructure -s src/Callout.Infrastructure
+dotnet ef migrations add <Name> -p src/Callout.Infrastructure -s src/Callout.Web
 ```
 
 ## Build, test, run
