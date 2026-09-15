@@ -1,13 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Callout.Core;
+using Callout.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
-using Callout.Core;
-using Callout.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Callout.Web.Pages;
 
@@ -26,8 +24,9 @@ public class AdminRequestsModel : PageModel
     public async Task OnGetAsync()
     {
         Bookings = await _context.Bookings
+            .AsNoTracking()
             .Include(b => b.Client)
-            .OrderByDescending(b => b.Id)
+            .OrderByDescending(b => b.CreatedAtUtc)
             .ToListAsync();
     }
 
