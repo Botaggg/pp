@@ -36,13 +36,14 @@ public class LoginModel : PageModel
     {
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync([FromServices] PostAdmissionLimits admission)
     {
         if (!ModelState.IsValid)
         {
             Error = "Invalid username or password.";
             return Page();
         }
+        if (!admission.TryAcquireLogin()) return StatusCode(StatusCodes.Status429TooManyRequests);
         // Always run the hash verification, even when the username is wrong, so the
         // response time does not reveal whether the username exists.
         var hasher = new PasswordHasher<object>();

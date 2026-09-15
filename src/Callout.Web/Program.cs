@@ -91,15 +91,6 @@ builder.Services.AddAntiforgery(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    // A second, shared limit cannot be bypassed by rotating or spoofing client IPs.
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        !HttpMethods.IsPost(context.Request.Method) ? RateLimitPartition.GetNoLimiter("read") :
-        RateLimitPartition.GetFixedWindowLimiter(string.Equals(context.Request.Path.Value?.TrimEnd('/'), "/Login", StringComparison.OrdinalIgnoreCase) ? "login" : "forms",
-            key => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = key == "login" ? 30 : 100,
-                Window = TimeSpan.FromMinutes(15), QueueLimit = 0
-            }));
 
     options.AddPolicy("request-form", context =>
         !HttpMethods.IsPost(context.Request.Method)
@@ -128,6 +119,9 @@ builder.Services.AddRateLimiter(options =>
     static string ClientKey(HttpContext context) =>
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 });
+// Shared budgets are spent inside the form handlers, after per-client admission
+// and antiforgery validation. Unrelated traffic and logout never consume them.
+builder.Services.AddSingleton<PostAdmissionLimits>();
 
 // Cookie auth with a single admin account.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
