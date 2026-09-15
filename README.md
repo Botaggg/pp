@@ -33,13 +33,14 @@ SQLite development option, keeping local and production migrations identical.
 
 ## Configuration
 
-Nothing secret lives in the repo. Both values below come from user-secrets locally
-and from App Service application settings in production.
+Nothing secret lives in the repo. Use separate development credentials in user-secrets
+and production credentials in App Service application settings. Never point local
+development or tests at the production database.
 
 ```bash
 # 1. Database (Postgres in every environment)
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
-  "Host=...;Database=callout;Username=...;Password=...;SSL Mode=Require" \
+  "Host=...;Database=callout;Username=...;Password=...;SSL Mode=VerifyFull;Channel Binding=Require" \
   --project src/Callout.Web
 
 # 2. Admin login. Generate the hash, then store the hash, never the password.
@@ -49,11 +50,21 @@ dotnet user-secrets set "Admin:Username" "gleb" --project src/Callout.Web
 dotnet user-secrets set "Admin:PasswordHash" "<paste the hash>" --project src/Callout.Web
 ```
 
+Production also requires `Admin__TotpSecret` and hashed recovery codes. Follow the
+[security setup and recovery procedure](docs/security-hardening.md). Admin passwords
+must have at least 16 characters; hashes use Identity V3 with at least 100,000 iterations.
+
 ## Database
+
+The runtime database account cannot change the schema. Supply a separate migration
+connection through `ConnectionStrings__MigrationConnection` in the migration
+process environment, then run:
 
 ```bash
 dotnet ef database update -p src/Callout.Infrastructure -s src/Callout.Web
 ```
+
+Never save production migration credentials as the local application's default connection.
 
 Migrations are scaffolded against a design-time factory, so adding one does not need
 a live database:
