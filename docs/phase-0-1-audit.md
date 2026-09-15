@@ -5,10 +5,15 @@ and the connected Neon production database.
 
 ## Verdict
 
-**The deployed version does not complete Phase 1.** Its honeypot is implicitly
-required by ASP.NET Core, while its handler rejects populated honeypots. A normal
-request cannot be saved. Fixes are implemented and tested locally, but production
-acceptance remains pending deployment and a real client submission.
+**Phase 0 and the Phase 1 technical requirements are complete and verified in
+production.** Commit `e4020a8` fixes the request flow, home route, rate limiting,
+and blank-login handling. Both GitHub workflows passed and Azure deployed the
+fixes. A labelled test request passed through the live public form, Neon, and
+the authenticated admin queue. Admin login and logout were verified live.
+
+The original plan also calls for a real client to use the form. That customer
+rollout milestone remains separate: the verification record is explicitly test
+data, and no client was contacted as part of this work.
 
 ## Phase 0
 
@@ -17,11 +22,12 @@ acceptance remains pending deployment and a real client submission.
 | .NET 10 and layered solution | SDK 10.0.401; Core, Infrastructure, Web, Tests build successfully | Pass |
 | Domain has no external dependencies | Core project has no package or project references | Pass |
 | GitHub repository and CI badge | `Botaggg/pp`; README badge and CI workflow present | Pass |
-| Green CI after a push | [CI run for 65d9036](https://github.com/Botaggg/pp/actions/runs/34925969933) | Pass for deployed revision |
-| Azure deployment | [Deployment run for 65d9036](https://github.com/Botaggg/pp/actions/runs/34925969994); App Service running on .NET 10 with HTTPS required | Pass for deployed revision |
-| Public URL | `/RequestForm` returns 200; `/` returns 404 on the deployed version | Home route fixed locally |
+| Green CI after a push | [CI run for e4020a8](https://github.com/Botaggg/pp/actions/runs/35009071105) | Pass for deployed revision |
+| Azure deployment | [Deployment run for e4020a8](https://github.com/Botaggg/pp/actions/runs/35009071055); App Service running on .NET 10 with HTTPS required | Pass for deployed revision |
+| Public URL | `/` and `/RequestForm` both return 200 with the corrected form | Pass |
 
-The Azure subscription is an enabled Azure for Students subscription.
+The Azure subscription is an enabled Azure for Students subscription. App Service
+plan `ASP-calloutrg-9ba5` uses the Free/F1 tier.
 
 ## Phase 1
 
@@ -33,17 +39,35 @@ The Azure subscription is an enabled Azure for Students subscription.
 | Correct schema | `Clients`, `Bookings`, foreign key, unique email index, booking date index | Pass |
 | UTC timestamp storage | All stored timestamps use PostgreSQL `timestamp with time zone` | Pass |
 | Public request fields | Name, phone, email, address, needs, availability | Present |
-| Form accepts valid submissions | Empty honeypot and availability no longer get implicit required validation | Fixed and tested locally |
-| Spam rejection | Filled honeypot redirects to confirmation without inserting data | Verified locally |
-| Fixed-window POST limits | 10 request POSTs per 10 minutes, 10 login POSTs per 15 minutes | GET quota bug fixed locally |
-| Confirmation | Valid form writes client and booking, then redirects to confirmation | Verified locally with PostgreSQL |
-| Single-admin cookie authentication | Framework PasswordHasher, configured credentials, secure HTTP-only production cookie | Verified locally; blank-login error fixed |
-| Protected admin queue | Anonymous access redirects to login; authenticated access shows the persisted request; logout revokes access | Verified locally |
-| Real production submissions | Production contained 0 clients and 0 bookings at audit time | Pending |
+| Form accepts valid submissions | Empty honeypot and availability no longer get implicit required validation | Pass, live and local |
+| Spam rejection | Filled honeypot redirects to confirmation without inserting data | Pass, live and local |
+| Fixed-window POST limits | 10 request POSTs per 10 minutes, 10 login POSTs per 15 minutes | Pass locally; page views also verified live |
+| Confirmation | Valid form writes client and booking, then redirects to confirmation | Pass, live and local PostgreSQL |
+| Single-admin cookie authentication | Framework PasswordHasher, configured credentials, secure HTTP-only production cookie | Pass, live and local |
+| Protected admin queue | Anonymous access redirects to login; authenticated access shows the persisted request; logout revokes access | Pass, live and local |
+| Production persistence | Labelled verification client 1 and booking 1 saved through the live form | Pass |
+| Real client usage | No actual customer submission was performed or claimed | Customer rollout step |
 
 Production connection and admin configuration are present and match the local
-configured values. Secret values were not included in this report. Production
-queries inspected schema and aggregate counts; they did not create test bookings.
+configured values. The original admin hash was a truncated placeholder, so a
+strong password and valid framework hash were generated and configured. Only the
+hash is stored in Azure and application user-secrets. The login is saved in the
+owner-only local file `~/.config/callout/admin-credentials.txt`, outside the
+repository. Secret values are not included in this report.
+
+Production now contains one labelled verification client and booking. It was
+submitted through the public HTTP form, not inserted directly with SQL. Read-only
+Neon queries independently confirmed:
+
+- Client ID: `1`; booking ID: `1`; status: `Requested`.
+- Created at: `2026-09-15T18:44:22.382Z`.
+- Blank availability persisted as an empty string.
+- Scheduled start and end remain null.
+- Honeypot and invalid submissions created no client rows.
+- The authenticated admin queue displays the test email and booking address.
+
+The record says `[TEST] Phase 0/1 verification` and `TEST ONLY - no service visit`.
+It is not a customer request or an appointment.
 
 PostgreSQL in every environment is the implemented replacement for the original
 SQLite development plan. One provider and migration set now cover local tests and
@@ -72,18 +96,20 @@ production.
   UTC values, validation, honeypot rejection, antiforgery, request throttling,
   login, protected queue access, logout, and migration/model consistency.
 - Test databases are created with unique names and removed after execution.
-- These changes have not yet run on GitHub Actions or been deployed to Azure.
+- GitHub CI and the test-gated Azure deployment both succeeded for `e4020a8`.
+- Live HTTP checks passed for valid submission, confirmation, optional fields,
+  validation, honeypot rejection, antiforgery, repeated page views, incorrect and
+  blank login, valid admin login, secure HTTP-only cookie, queue visibility, and
+  logout. Neon independently confirmed the persisted record and rejected inputs.
 - PostgreSQL 18 was installed locally for verification. The temporary test server
   was stopped afterward; no background service was enabled.
 
-## Remaining acceptance steps
+## Customer rollout
 
-1. Publish the reviewed changes through the tested deployment workflow.
-2. Verify `/` and `/RequestForm` load on the deployed revision.
-3. Submit a clearly labelled verification request and confirm its client and
-   booking records in Neon and in the authenticated admin queue.
-4. Have a real client submit a request. This is the original Phase 1 acceptance
-   criterion and cannot be replaced by an automated test.
+The app is ready for a real client to submit a request at the
+[live form](https://callout-marin-cfe8guhza9cnfsf0.northcentralus-01.azurewebsites.net/).
+Using it with an actual customer satisfies the original plan's real-client
+milestone. No additional Phase 0/1 feature implementation is required.
 
 ## Follow-up considerations
 
